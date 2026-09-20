@@ -1,0 +1,17 @@
+সুন্দরবন ড্রাগ হাউস — ফোন দিয়ে APK বানানোর নির্দেশনা
+
+১) ZIP Extract করুন।
+২) GitHub-এ নতুন একটি Repository তৈরি করুন। উদাহরণ: sundarban-drug-house
+৩) Extract করা সব মূল ফাইল Repository-তে Upload করুন।
+৪) package.json এবং capacitor.config.ts-ও root-এ Upload করুন।
+৫) .github/workflows/build-apk.yml ফাইলটি একই path-এ রাখতে হবে।
+৬) GitHub → Actions → Build Sundarban Drug House APK → Run workflow চাপুন।
+৭) Build শেষ হলে Actions-এর run খুলে Artifacts থেকে Sundarban-Drug-House-APK download করুন।
+৮) ZIP হলে Extract করে Sundarban-Drug-House.apk ফোনে Install করুন।
+
+গুরুত্বপূর্ণ:
+- index.html, script0.js, script1.js, sw.js বা অন্য মূল app code পরিবর্তন করা হয়নি।
+- APK wrapper শুধু Android-এর ভিতরে বর্তমান web app-কে প্যাকেজ করে।
+- প্রথমবার APK ইনস্টল করলে browser-এর পুরনো localStorage/IndexedDB data নিজে থেকে APK-তে আসবে না।
+- বর্তমান backup-latest-2026-09-20.json অ্যাপের Restore/Backup ব্যবস্থা দিয়ে প্রয়োজন হলে Restore করতে হবে।
+- Debug APK ব্যক্তিগত ফোনে ব্যবহারের জন্য তৈরি করা হচ্ছে; Play Store release signing এতে যোগ করা হয়নি।
