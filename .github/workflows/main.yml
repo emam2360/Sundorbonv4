@@ -18,16 +18,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-    
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
 
       - name: Install dependencies
         run: npm install
+
+      - name: Install TypeScript
+        run: npm install -D typescript
 
       - name: Install Capacitor Android
         run: npm install @capacitor/android@8.5.2
