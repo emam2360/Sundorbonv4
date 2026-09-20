@@ -43,6 +43,107 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      # ---------------------------------------------------------
+      # Android Back Button Handling
+      #
+      # Back button behavior:
+      # 1. If WebView has history -> go back
+      # 2. If there is no history -> show exit confirmation
+      # 3. YES -> close the app
+      # 4. NO -> keep the app open
+      #
+      # No modification to script0.js is required.
+      # ---------------------------------------------------------
+      - name: Configure Android Back Button
+        shell: bash
+        run: |
+          set -e
+
+          MAIN_ACTIVITY=$(find android/app/src/main/java -name "MainActivity.java" | head -n 1)
+
+          if [ -z "$MAIN_ACTIVITY" ]; then
+            echo "MainActivity.java not found."
+            exit 1
+          fi
+
+          echo "Using MainActivity:"
+          echo "$MAIN_ACTIVITY"
+
+          cat > "$MAIN_ACTIVITY" <<'EOF'
+          package PLACEHOLDER_PACKAGE;
+
+          import android.os.Bundle;
+          import android.webkit.WebView;
+
+          import androidx.appcompat.app.AlertDialog;
+
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+
+              private boolean isExitDialogShowing = false;
+
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+              }
+
+              @Override
+              public void onBackPressed() {
+
+                  WebView webView = null;
+
+                  try {
+                      if (getBridge() != null) {
+                          webView = getBridge().getWebView();
+                      }
+                  } catch (Exception ignored) {
+                  }
+
+                  if (webView != null && webView.canGoBack()) {
+                      webView.goBack();
+                      return;
+                  }
+
+                  if (isExitDialogShowing) {
+                      return;
+                  }
+
+                  isExitDialogShowing = true;
+
+                  new AlertDialog.Builder(this)
+                          .setTitle("অ্যাপ থেকে বের হবেন?")
+                          .setMessage("আপনি কি সত্যিই অ্যাপ থেকে বের হতে চান?")
+                          .setPositiveButton("হ্যাঁ", (dialog, which) -> {
+                              isExitDialogShowing = false;
+                              finishAndRemoveTask();
+                          })
+                          .setNegativeButton("না", (dialog, which) -> {
+                              isExitDialogShowing = false;
+                              dialog.dismiss();
+                          })
+                          .setOnCancelListener(dialog -> {
+                              isExitDialogShowing = false;
+                          })
+                          .show();
+              }
+          }
+          EOF
+
+          # Detect the actual Java package from the generated MainActivity path.
+          PACKAGE_PATH=$(dirname "$MAIN_ACTIVITY" | sed 's#android/app/src/main/java/##')
+          PACKAGE_NAME=$(echo "$PACKAGE_PATH" | tr '/' '.')
+
+          echo "Detected package: $PACKAGE_NAME"
+
+          sed -i "s/package PLACEHOLDER_PACKAGE;/package $PACKAGE_NAME;/" "$MAIN_ACTIVITY"
+
+          echo "Final MainActivity.java:"
+          cat "$MAIN_ACTIVITY"
+
+      - name: Sync Capacitor after Android configuration
+        run: npx cap sync android
+
       - name: Build Debug APK
         working-directory: android
         run: ./gradlew assembleDebug
