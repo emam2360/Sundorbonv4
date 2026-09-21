@@ -11,55 +11,94 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
+      # =========================================================
+      # 1. Checkout
+      # =========================================================
       - name: Checkout source
         uses: actions/checkout@v4
 
+
+      # =========================================================
+      # 2. Node.js
+      # =========================================================
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
+
+      # =========================================================
+      # 3. Java
+      # =========================================================
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
 
+
+      # =========================================================
+      # 4. Install dependencies
+      # =========================================================
       - name: Install dependencies
         run: npm install
 
+
+      # =========================================================
+      # 5. TypeScript
+      # =========================================================
       - name: Install TypeScript
         run: npm install -D typescript
 
+
+      # =========================================================
+      # 6. Capacitor Android
+      # =========================================================
       - name: Install Capacitor Android
         run: npm install @capacitor/android@8.5.2
 
+
+      # =========================================================
+      # 7. Build web application
+      # =========================================================
       - name: Prepare web files
         run: npm run build
 
+
+      # =========================================================
+      # 8. Add Android platform
+      # =========================================================
       - name: Add Android platform
         run: npx cap add android
 
+
+      # =========================================================
+      # 9. Sync Capacitor
+      # =========================================================
       - name: Sync Capacitor
         run: npx cap sync android
 
-      # ---------------------------------------------------------
-      # Android Back Button Handling
+
+      # =========================================================
+      # 10. Android Back Button
       #
-      # Back button behavior:
-      # 1. If WebView has history -> go back
-      # 2. If there is no history -> show exit confirmation
-      # 3. YES -> close the app
-      # 4. NO -> keep the app open
+      # Inside pages:
+      # Back -> previous page
       #
-      # No modification to script0.js is required.
-      # ---------------------------------------------------------
+      # Home/root:
+      # Back -> exit confirmation
+      #
+      # Yes -> close
+      # No -> stay
+      # =========================================================
       - name: Configure Android Back Button
         shell: bash
         run: |
           set -e
 
-          MAIN_ACTIVITY=$(find android/app/src/main/java -name "MainActivity.java" | head -n 1)
+          MAIN_ACTIVITY=$(find android/app/src/main/java \
+            -name "MainActivity.java" | head -n 1)
 
           if [ -z "$MAIN_ACTIVITY" ]; then
             echo "MainActivity.java not found."
@@ -69,8 +108,15 @@ jobs:
           echo "Using MainActivity:"
           echo "$MAIN_ACTIVITY"
 
-          cat > "$MAIN_ACTIVITY" <<'EOF'
-          package PLACEHOLDER_PACKAGE;
+          PACKAGE_PATH=$(dirname "$MAIN_ACTIVITY" \
+            | sed 's#android/app/src/main/java/##')
+
+          PACKAGE_NAME=$(echo "$PACKAGE_PATH" | tr '/' '.')
+
+          echo "Detected package: $PACKAGE_NAME"
+
+          cat > "$MAIN_ACTIVITY" <<EOF
+          package $PACKAGE_NAME;
 
           import android.os.Bundle;
           import android.webkit.WebView;
@@ -130,24 +176,28 @@ jobs:
           }
           EOF
 
-          # Detect the actual Java package from the generated MainActivity path.
-          PACKAGE_PATH=$(dirname "$MAIN_ACTIVITY" | sed 's#android/app/src/main/java/##')
-          PACKAGE_NAME=$(echo "$PACKAGE_PATH" | tr '/' '.')
-
-          echo "Detected package: $PACKAGE_NAME"
-
-          sed -i "s/package PLACEHOLDER_PACKAGE;/package $PACKAGE_NAME;/" "$MAIN_ACTIVITY"
-
           echo "Final MainActivity.java:"
           cat "$MAIN_ACTIVITY"
 
+
+      # =========================================================
+      # 11. Sync again after Android configuration
+      # =========================================================
       - name: Sync Capacitor after Android configuration
         run: npx cap sync android
 
+
+      # =========================================================
+      # 12. Build APK
+      # =========================================================
       - name: Build Debug APK
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --no-daemon
 
+
+      # =========================================================
+      # 13. Upload APK
+      # =========================================================
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
